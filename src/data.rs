@@ -66,15 +66,12 @@ where:
    - lastmonth
  */
 fn parse_range(input: &str) -> NomResult<&str, Range> {
-    // FIXME: Should this use Range::new() instead of direct instanciation ?
     alt((
-        map(separated_pair(parse_date, tag(" - "), parse_date), |r| {
-            Range {
-                from: r.0,
-                to: Some(r.1),
-            }
-        }),
-        map(parse_date, |r| Range { from: r, to: None }),
+        map_res(
+            separated_pair(parse_date, tag(" - "), parse_date),
+            |(from, to)| Range::new(from, Some(to)),
+        ),
+        map_res(parse_date, |r| Range::new(r, None)),
         preceded(char(':'), map_res(alphanumeric0, Range::from_period_str)),
     ))(input)
 }
@@ -349,10 +346,6 @@ impl Range {
 
         let duration = (to - self.from) / 2;
 
-        /*if duration <= Duration::seconds(1) {
-            bail!("Cannot have ranges smaller that 1 second");
-        }*/
-
         self.split_at(self.from + duration)
     }
 }
@@ -362,19 +355,21 @@ impl FromStr for Range {
 
     fn from_str(s: &str) -> Result<Self> {
         let range = match parse_range(s) {
-            Ok((_, r)) => r,
+            Ok((st, r)) => {
+                if !st.is_empty() {
+                    bail!("Cannot parse range {}", s)
+                }
+                r
+            }
             Err(_) => bail!("Cannot parse range {}", s),
         };
 
-        let to = match range.to {
-            Some(t) => t,
-            None => Utc::now(),
-        };
-
-        ensure!(
-            to - range.from >= Duration::seconds(1),
-            "From must be less than \"to - 1s\""
-        );
+        if let None = range.to {
+            ensure!(
+                Utc::now() - range.from >= Duration::seconds(1),
+                "From must be less than \"now - 1s\""
+            )
+        }
 
         Ok(range)
     }
