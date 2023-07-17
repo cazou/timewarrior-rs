@@ -1,7 +1,5 @@
 use anyhow::{bail, ensure, Result};
-use chrono::{
-    Date, DateTime, Datelike, Duration, Local, LocalResult, NaiveDateTime, TimeZone, Utc, Weekday,
-};
+use chrono::{DateTime, Datelike, Duration, Local, LocalResult, NaiveDateTime, TimeZone, Utc, Weekday, NaiveDate};
 use regex::Regex;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
@@ -133,12 +131,12 @@ impl Range {
         };
     }
 
-    pub fn day(day: &Date<Local>) -> Result<Range> {
-        let morning = match Utc.from_local_datetime(&day.and_hms(0, 0, 0).naive_utc()) {
+    pub fn day(day: &DateTime<Local>) -> Result<Range> {
+        let morning = match Utc.from_local_datetime(&day.naive_utc().date().and_hms(0, 0, 0)) {
             LocalResult::Single(t) => t,
             _ => bail!("Cannot determine morning"),
         };
-        let evening = match Utc.from_local_datetime(&day.and_hms(23, 59, 59).naive_utc()) {
+        let evening = match Utc.from_local_datetime(&day.naive_utc().date().and_hms(23, 59, 59)) {
             LocalResult::Single(t) => Some(t),
             _ => bail!("Cannot determine morning"),
         };
@@ -147,29 +145,27 @@ impl Range {
     }
 
     pub fn today() -> Result<Range> {
-        Self::day(&Local::today())
+        Self::day(&Local::today().and_hms(0,0,0))
     }
 
     pub fn yesterday() -> Result<Range> {
         let day = Local::today() - Duration::days(1);
-        Self::day(&day)
+        Self::day(&day.and_hms(0,0,0))
     }
 
-    pub fn week(day: &Date<Local>) -> Result<Range> {
+    pub fn week(day: &DateTime<Local>) -> Result<Range> {
         let mut current = day.clone();
         while current.weekday() != Weekday::Mon {
             current = current - Duration::days(1);
         }
 
-        let monday = match Utc.from_local_datetime(&current.and_hms(0, 0, 0).naive_utc()) {
+        let monday = match Utc.from_local_datetime(&current.naive_utc().date().and_hms(0, 0, 0)) {
             LocalResult::Single(t) => t,
             _ => bail!("Cannot determine morning"),
         };
 
         let sunday = match Utc.from_local_datetime(
-            &(current + Duration::days(6))
-                .and_hms(23, 59, 59)
-                .naive_utc(),
+            &(current + Duration::days(6)).naive_utc().date().and_hms(23, 59, 59),
         ) {
             LocalResult::Single(t) => Some(t),
             _ => bail!("Cannot determine morning"),
@@ -179,21 +175,21 @@ impl Range {
     }
 
     pub fn current_week() -> Result<Range> {
-        Self::week(&Local::today())
+        Self::week(&Local::today().and_hms(0,0,0))
     }
 
     pub fn last_week() -> Result<Range> {
         let day = Local::today() - Duration::days(7);
-        Self::week(&day)
+        Self::week(&day.and_hms(0,0,0))
     }
 
-    pub fn month(day: &Date<Local>) -> Result<Range> {
+    pub fn month(day: &DateTime<Local>) -> Result<Range> {
         let mut current = day.clone();
         while current.day() != 1 {
             current = current - Duration::days(1);
         }
 
-        let first = match Utc.from_local_datetime(&current.and_hms(0, 0, 0).naive_utc()) {
+        let first = match Utc.from_local_datetime(&current.naive_utc().date().and_hms(0, 0, 0)) {
             LocalResult::Single(t) => t,
             _ => bail!("Cannot determine morning"),
         };
@@ -204,9 +200,8 @@ impl Range {
         }
 
         let last = match Utc.from_local_datetime(
-            &(current - Duration::days(1))
-                .and_hms(23, 59, 59)
-                .naive_utc(),
+            &(current - Duration::days(1)).naive_utc().date()
+                .and_hms(23, 59, 59),
         ) {
             LocalResult::Single(t) => Some(t),
             _ => bail!("Cannot determine morning"),
@@ -216,7 +211,7 @@ impl Range {
     }
 
     pub fn current_month() -> Result<Range> {
-        Self::month(&Local::today())
+        Self::month(&Local::today().and_hms(0,0,0))
     }
 
     pub fn last_month() -> Result<Range> {
@@ -225,7 +220,7 @@ impl Range {
         while current.month() != this_month - 1 {
             current = current - Duration::days(15);
         }
-        Self::month(&current)
+        Self::month(&current.and_hms(0,0,0))
     }
 
     pub fn is_open(&self) -> bool {
@@ -311,9 +306,9 @@ impl Range {
         to - self.from
     }
 
-    pub fn days(&self) -> Vec<Date<Utc>> {
-        let mut current = self.from.date();
-        let end = self.to.unwrap_or(Utc::now()).date();
+    pub fn days(&self) -> Vec<DateTime<Utc>> {
+        let mut current = self.from;
+        let end = self.to.unwrap_or(Utc::now());
         let mut days = vec![];
         while current <= end {
             days.push(current);
@@ -414,8 +409,8 @@ impl TimeEntry {
         &self.tags
     }
 
-    pub fn day(&self) -> Date<Utc> {
-        self.range.from.date()
+    pub fn day(&self) -> NaiveDate {
+        self.range.from.naive_local().date()
     }
 
     pub fn id(&self) -> usize {
