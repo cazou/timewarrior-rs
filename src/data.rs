@@ -145,7 +145,7 @@ impl Range {
     }
 
     pub fn today() -> Result<Range> {
-        Self::day(&Local::today().and_hms(0,0,0))
+        Self::day(&Local::now())
     }
 
     pub fn yesterday() -> Result<Range> {
