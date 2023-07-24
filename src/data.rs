@@ -90,7 +90,8 @@ fn parse_entry(input: &str) -> NomResult<&str, TimeEntry> {
         }),
     )(input)
 }
-
+/// Specify an optionally opened range of time. Times are stored in UTC and expected to be given in
+/// UTC time.
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Range {
     from: DateTime<Utc>,
@@ -110,6 +111,7 @@ impl Range {
         }
     }
 
+    /// Print the duration in a HH:MM:SS format
     pub fn pretty_duration(d: &Duration) -> String {
         format!(
             "{:02}:{:02}:{:02}",
@@ -119,6 +121,7 @@ impl Range {
         )
     }
 
+    /// Create a new Range with the specified `from` and `to`
     pub fn new(from: DateTime<Utc>, to: Option<DateTime<Utc>>) -> Result<Range> {
         if to.is_none() {
             return Ok(Range { from, to });
@@ -131,6 +134,7 @@ impl Range {
         };
     }
 
+    /// Create a new Range representing the day containing the given date/time
     pub fn day(day: &DateTime<Local>) -> Result<Range> {
         let morning = match Utc.from_local_datetime(&day.naive_utc().date().and_hms(0, 0, 0)) {
             LocalResult::Single(t) => t,
@@ -138,21 +142,24 @@ impl Range {
         };
         let evening = match Utc.from_local_datetime(&day.naive_utc().date().and_hms(23, 59, 59)) {
             LocalResult::Single(t) => Some(t),
-            _ => bail!("Cannot determine morning"),
+            _ => bail!("Cannot determine evening"),
         };
 
         Range::new(morning, evening)
     }
 
+    /// Create a Range representing today
     pub fn today() -> Result<Range> {
         Self::day(&Local::today().and_hms(0,0,0))
     }
 
+    /// Create a Range representing yesterday
     pub fn yesterday() -> Result<Range> {
         let day = Local::today() - Duration::days(1);
         Self::day(&day.and_hms(0,0,0))
     }
 
+    /// Create a new Range representing the week containing the given date/time
     pub fn week(day: &DateTime<Local>) -> Result<Range> {
         let mut current = day.clone();
         while current.weekday() != Weekday::Mon {
@@ -174,15 +181,18 @@ impl Range {
         Range::new(monday, sunday)
     }
 
+    /// Create a Range representing the current week
     pub fn current_week() -> Result<Range> {
         Self::week(&Local::today().and_hms(0,0,0))
     }
 
+    /// Create a Range representing last week
     pub fn last_week() -> Result<Range> {
         let day = Local::today() - Duration::days(7);
         Self::week(&day.and_hms(0,0,0))
     }
 
+    /// Create a new Range representing the month containing the given date/time
     pub fn month(day: &DateTime<Local>) -> Result<Range> {
         let mut current = day.clone();
         while current.day() != 1 {
@@ -210,10 +220,12 @@ impl Range {
         Range::new(first, last)
     }
 
+    /// Create a Range representing the current month
     pub fn current_month() -> Result<Range> {
         Self::month(&Local::today().and_hms(0,0,0))
     }
 
+    /// Create a Range representing the last month
     pub fn last_month() -> Result<Range> {
         let mut current = Local::today();
         let this_month = current.month();
@@ -223,10 +235,12 @@ impl Range {
         Self::month(&current.and_hms(0,0,0))
     }
 
+    /// Return true if the range is open. An open range is a Range that has no end set.
     pub fn is_open(&self) -> bool {
         self.to.is_none()
     }
 
+    /// Return the intersection with another Range, if any.
     pub fn intersection(&self, other: &Range) -> Option<Range> {
         if self.to.is_none() && other.to.is_none() {
             let from = if self.from < other.from {
@@ -297,6 +311,7 @@ impl Range {
         }
     }
 
+    /// Return the duration of a Range
     pub fn duration(&self) -> Duration {
         let to = match self.to {
             Some(t) => t,
@@ -306,6 +321,7 @@ impl Range {
         to - self.from
     }
 
+    /// Return the number of days in the Range
     pub fn days(&self) -> Vec<DateTime<Utc>> {
         let mut current = self.from;
         let end = self.to.unwrap_or(Utc::now());
@@ -318,6 +334,7 @@ impl Range {
         days
     }
 
+    /// Split the Range at the given date/time in 2 new Range elements
     pub fn split_at(&self, date: DateTime<Utc>) -> Result<(Range, Range)> {
         let to = match self.to {
             Some(t) => t,
@@ -333,6 +350,7 @@ impl Range {
         ))
     }
 
+    /// Split the Range at middle in 2 new Range elements
     pub fn split(&self) -> Result<(Range, Range)> {
         let to = match self.to {
             Some(t) => t,
@@ -393,6 +411,8 @@ impl Display for Range {
     }
 }
 
+/// Represent a time entry in timewarrior. It stores the time Range, the tags and the id of the
+/// entry.
 #[derive(Clone)]
 pub struct TimeEntry {
     range: Range,
@@ -401,18 +421,23 @@ pub struct TimeEntry {
 }
 
 impl TimeEntry {
+    /// Return the time Range of the entry. It can be open if the entry is currently being logged.
     pub fn range(&self) -> &Range {
         &self.range
     }
 
+    /// Return a slice of the entry's tags.
     pub fn tags(&self) -> &[String] {
         &self.tags
     }
 
+    /// Return the day of this entry. Note that this is the day of the start of the entry.
     pub fn day(&self) -> NaiveDate {
         self.range.from.naive_local().date()
     }
 
+    /// Return the ID of the entry. IDs are not fixed for a specific entry. IDs are always counting
+    /// up from one, starting at the most recent entry.
     pub fn id(&self) -> usize {
         self.id
     }
@@ -435,6 +460,7 @@ impl Display for TimeEntry {
     }
 }
 
+/// Represent the work done, providing a list of time entries.
 pub struct Work {
     entries: Vec<TimeEntry>,
 }
@@ -451,6 +477,8 @@ impl Work {
         Ok(entries)
     }
 
+    /// Load entries from the given timewarrior database at data_path.
+    /// If Range is given, only the entries in that range are added to the Work.
     pub fn load_range(data_path: &Path, range: Option<Range>) -> Result<Work> {
         let mut entries = vec![];
 
@@ -491,14 +519,17 @@ impl Work {
         };
     }
 
+    /// Same as `load_range` but loads all entries.
     pub fn load_all(data_path: &Path) -> Result<Work> {
         Work::load_range(data_path, None)
     }
 
+    /// Return a slice of the entries
     pub fn entries(&self) -> &[TimeEntry] {
         &self.entries
     }
 
+    /// Return the duration of all the entries.
     pub fn duration(&self) -> Duration {
         self.entries()
             .iter()
