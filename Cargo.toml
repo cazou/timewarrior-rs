@@ -2,6 +2,10 @@
 name = "timewarrior-rs"
 version = "0.4.4"
 edition = "2021"
+description = "An interface to use data logged by the `timew` utility."
+license = "GPL-2.0-or-later"
+keywords = ["timewarrior", "timew", "timelogging"]
+repository = "https://github.com/cazou/timewarrior-rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
