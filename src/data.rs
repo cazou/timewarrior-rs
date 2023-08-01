@@ -1,5 +1,8 @@
 use anyhow::{bail, ensure, Result};
-use chrono::{DateTime, Datelike, Duration, Local, LocalResult, NaiveDateTime, TimeZone, Utc, Weekday, NaiveDate};
+use chrono::{
+    DateTime, Datelike, Duration, Local, LocalResult, NaiveDate, NaiveDateTime, TimeZone, Utc,
+    Weekday,
+};
 use regex::Regex;
 use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
@@ -156,7 +159,7 @@ impl Range {
     /// Create a Range representing yesterday
     pub fn yesterday() -> Result<Range> {
         let day = Local::today() - Duration::days(1);
-        Self::day(&day.and_hms(0,0,0))
+        Self::day(&day.and_hms(0, 0, 0))
     }
 
     /// Create a new Range representing the week containing the given date/time
@@ -172,7 +175,10 @@ impl Range {
         };
 
         let sunday = match Utc.from_local_datetime(
-            &(current + Duration::days(6)).naive_utc().date().and_hms(23, 59, 59),
+            &(current + Duration::days(6))
+                .naive_utc()
+                .date()
+                .and_hms(23, 59, 59),
         ) {
             LocalResult::Single(t) => Some(t),
             _ => bail!("Cannot determine morning"),
@@ -183,13 +189,13 @@ impl Range {
 
     /// Create a Range representing the current week
     pub fn current_week() -> Result<Range> {
-        Self::week(&Local::today().and_hms(0,0,0))
+        Self::week(&Local::today().and_hms(0, 0, 0))
     }
 
     /// Create a Range representing last week
     pub fn last_week() -> Result<Range> {
         let day = Local::today() - Duration::days(7);
-        Self::week(&day.and_hms(0,0,0))
+        Self::week(&day.and_hms(0, 0, 0))
     }
 
     /// Create a new Range representing the month containing the given date/time
@@ -210,7 +216,9 @@ impl Range {
         }
 
         let last = match Utc.from_local_datetime(
-            &(current - Duration::days(1)).naive_utc().date()
+            &(current - Duration::days(1))
+                .naive_utc()
+                .date()
                 .and_hms(23, 59, 59),
         ) {
             LocalResult::Single(t) => Some(t),
@@ -222,7 +230,7 @@ impl Range {
 
     /// Create a Range representing the current month
     pub fn current_month() -> Result<Range> {
-        Self::month(&Local::today().and_hms(0,0,0))
+        Self::month(&Local::today().and_hms(0, 0, 0))
     }
 
     /// Create a Range representing the last month
@@ -232,7 +240,7 @@ impl Range {
         while current.month() != this_month - 1 {
             current = current - Duration::days(15);
         }
-        Self::month(&current.and_hms(0,0,0))
+        Self::month(&current.and_hms(0, 0, 0))
     }
 
     /// Return true if the range is open. An open range is a Range that has no end set.
