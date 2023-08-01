@@ -25,4 +25,3 @@ pub mod formatter;
 
 pub mod config;
 pub mod editor;
-
