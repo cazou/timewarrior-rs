@@ -1,6 +1,6 @@
 [package]
 name = "timewarrior-rs"
-version = "0.4.4"
+version = "0.4.99"
 edition = "2021"
 description = "An interface to use data logged by the `timew` utility."
 license = "GPL-2.0-or-later"
